@@ -20,7 +20,7 @@ tests_require = []
 
 setup(
     name="thriftpywrap",
-    version='0.1',
+    version='0.1.1',
     description="Lib to help you build console based thrift servers.",
     long_description=codecs.open('README.rst', mode='r', encoding='utf-8').read(),
     author="SciELO",

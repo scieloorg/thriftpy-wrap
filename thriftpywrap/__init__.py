@@ -30,8 +30,8 @@ def get_description(handler, default=None):
 
 
 def ConsoleApp(spec, handler,
-               proto_factory=_PROTO_FACTORY,
-               trans_factory=_TRANS_FACTORY):
+               proto_factory=_PROTO_FACTORY(),
+               trans_factory=_TRANS_FACTORY()):
     def app():
         parser = argparse.ArgumentParser(description=get_description(handler))
         parser.add_argument('--port', type=int, default=8080)
@@ -55,6 +55,9 @@ def ConsoleApp(spec, handler,
         logging.basicConfig(level=getattr(logging, args.loglevel.upper()))
 
         address_family = getattr(socket, args.address_family)
+
+        logger.debug('Protocol factory: %s', proto_factory)
+        logger.debug('Transport factory: %s', trans_factory)
 
         server = make_server(spec, handler(*args.arguments),
                              fd=args.fd,
