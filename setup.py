@@ -11,7 +11,7 @@ if sys.version_info[0:2] < (2, 7):
 
 
 install_requires = [
-    'thriftpy >= 0.2',
+    'thriftpy >= 0.3.9',
 ]
 
 

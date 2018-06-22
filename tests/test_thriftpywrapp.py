@@ -71,5 +71,5 @@ class MakeServerTests(unittest.TestCase):
             self.assertEqual(server.trans.handle.getsockname(),
                              sock.getsockname())
         finally:
-            server.trans.close()
+            server.close()
             sock.close()

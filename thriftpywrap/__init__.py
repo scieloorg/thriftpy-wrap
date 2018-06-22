@@ -43,6 +43,10 @@ def ConsoleApp(spec, handler,
         group.add_argument('--host')
         group.add_argument('--unix-socket')
         group.add_argument('--fd', type=int)
+        parser.add_argument('--client-timeout', type=float, default=20000,
+                help="Timeout in milliseconds for the operation to complete")
+        parser.add_argument('--listen-backlog', type=int, default=128,
+                help="Queue limit for incomming connections")
         parser.add_argument(
             'arguments',
             default=[],
@@ -66,7 +70,9 @@ def ConsoleApp(spec, handler,
                              unix_socket=args.unix_socket,
                              address_family=address_family,
                              proto_factory=proto_factory,
-                             trans_factory=trans_factory)
+                             trans_factory=trans_factory,
+                             client_timeout=args.client_timeout,
+                             backlog=args.listen_backlog)
         try:
             server.serve()
         except KeyboardInterrupt:
@@ -85,20 +91,29 @@ def make_server(service, handler,
                 unix_socket=None,
                 address_family=socket.AF_INET,
                 proto_factory=None,
-                trans_factory=None):
+                trans_factory=None,
+                client_timeout=None,
+                backlog=128):
     processor = TProcessor(service, handler)
     if unix_socket is not None:
         logger.info('Setting up server bound to %s', unix_socket)
         server_socket = TServerSocket(unix_socket=unix_socket,
-                                      socket_family=address_family)
+                                      socket_family=address_family,
+                                      client_timeout=client_timeout,
+                                      backlog=backlog)
     elif fd is not None:
         logger.info('Setting up server bound to socket fd %s', fd)
-        server_socket = TFDServerSocket(fd=fd, socket_family=address_family)
+        server_socket = TFDServerSocket(fd=fd,
+                                        socket_family=address_family,
+                                        client_timeout=client_timeout,
+                                        backlog=backlog)
     elif host is not None and port is not None:
         logger.info('Setting up server bound to %s:%s', host, str(port))
         server_socket = TServerSocket(host=host,
                                       port=port,
-                                      socket_family=address_family)
+                                      socket_family=address_family,
+                                      client_timeout=client_timeout,
+                                      backlog=backlog)
     else:
         raise ValueError('Insufficient params')
 
@@ -115,22 +130,22 @@ class TFDServerSocket(TServerSocket):
 
     def _resolveAddr(self):
         if self._fd is not None:
-            return [(self._socket_family, socket.SOCK_STREAM, None, None, None)
+            return [(self.socket_family, socket.SOCK_STREAM, None, None, None)
                    ]
         else:
             return super(TFDServerSocket, self)._resolveAddr()
 
     def listen(self):
         res0 = self._resolveAddr()
-        socket_family = self._socket_family == socket.AF_UNSPEC and (
-            socket.AF_INET6 or self._socket_family)
+        socket_family = self.socket_family == socket.AF_UNSPEC and (
+            socket.AF_INET6 or self.socket_family)
         for res in res0:
             if res[0] is socket_family or res is res0[-1]:
                 break
 
         # We need remove the old unix socket if the file exists and
         # nobody is listening on it.
-        if self._unix_socket:
+        if self.unix_socket:
             tmp = socket.socket(res[0], res[1])
             try:
                 tmp.connect(res[4])
@@ -149,7 +164,7 @@ class TFDServerSocket(TServerSocket):
             if hasattr(self.handle, 'settimeout'):
                 self.handle.settimeout(None)
             self.handle.bind(res[4])
-            self.handle.listen(128)
+            self.handle.listen(self.backlog)
 
         logger.debug('Started listening socket %s', repr(self.handle))
         logger.info('Started listening %s', self.handle.getsockname())
