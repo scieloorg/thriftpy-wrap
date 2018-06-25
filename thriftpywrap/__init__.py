@@ -78,7 +78,9 @@ def ConsoleApp(spec, handler,
         except KeyboardInterrupt:
             sys.exit(1)
         finally:
+            server.close()
             server.trans.close()
+            logger.info('Terminating the thrift server')
             logger.debug('Closing transport %s', server.trans)
 
     return app
