@@ -130,43 +130,12 @@ class TFDServerSocket(TServerSocket):
         self._fd = fd
         super(TFDServerSocket, self).__init__(**kwargs)
 
-    def _resolveAddr(self):
-        if self._fd is not None:
-            return [(self.socket_family, socket.SOCK_STREAM, None, None, None)
-                   ]
-        else:
-            return super(TFDServerSocket, self)._resolveAddr()
-
     def listen(self):
-        res0 = self._resolveAddr()
-        socket_family = self.socket_family == socket.AF_UNSPEC and (
-            socket.AF_INET6 or self.socket_family)
-        for res in res0:
-            if res[0] is socket_family or res is res0[-1]:
-                break
-
-        # We need remove the old unix socket if the file exists and
-        # nobody is listening on it.
-        if self.unix_socket:
-            tmp = socket.socket(res[0], res[1])
-            try:
-                tmp.connect(res[4])
-            except socket.error as err:
-                eno, message = err.args
-                if eno == errno.ECONNREFUSED:
-                    os.unlink(res[4])
-
-        if self._fd:
-            self.handle = socket.fromfd(self._fd, res[0], res[1])
-            self.handle.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.handle.setblocking(1)
+        if self._fd is not None:
+            _sock = socket.fromfd(self._fd, self.socket_family, socket.SOCK_STREAM)
+            _sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            _sock.setblocking(1)
+            self.sock = _sock
         else:
-            self.handle = socket.socket(res[0], res[1])
-            self.handle.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            if hasattr(self.handle, 'settimeout'):
-                self.handle.settimeout(None)
-            self.handle.bind(res[4])
-            self.handle.listen(self.backlog)
+            super(TFDServerSocket, self).listen()
 
-        logger.debug('Started listening socket %s', repr(self.handle))
-        logger.info('Started listening %s', self.handle.getsockname())

@@ -4,7 +4,11 @@ import tempfile
 import os
 
 import thriftpy
-from thriftpywrap import (get_description, make_server, )
+from thriftpywrap import (
+        get_description,
+        make_server,
+        ConsoleApp,
+        )
 
 spec = thriftpy.load(os.path.join(os.path.dirname(__file__), "spec.thrift"))
 
@@ -68,8 +72,12 @@ class MakeServerTests(unittest.TestCase):
             self.assertIsInstance(server, TThreadedServer)
 
             server.trans.listen()
-            self.assertEqual(server.trans.handle.getsockname(),
+            self.assertEqual(server.trans.sock.getsockname(),
                              sock.getsockname())
         finally:
-            server.close()
             sock.close()
+
+
+if __name__ == '__main__':
+    main = ConsoleApp(spec.Service, Dispatcher)
+    main()
